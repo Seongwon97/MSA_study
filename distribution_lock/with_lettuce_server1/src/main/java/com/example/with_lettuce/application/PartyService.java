@@ -14,7 +14,6 @@ import com.example.with_lettuce.infrastructure.redis.RedisLockRepository;
 import lombok.RequiredArgsConstructor;
 
 @Service
-@Transactional
 @RequiredArgsConstructor
 public class PartyService {
 
@@ -22,22 +21,29 @@ public class PartyService {
     private final ParticipantRepository participantRepository;
     private final RedisLockRepository redisLockRepository;
 
+    @Transactional
     public PartyResponse create(String partyName, int capacity) {
         Party party = partyRepository.save(new Party(partyName, capacity));
         return new PartyResponse(party.getId(), party.getName(), party.getCapacity());
     }
 
+    @Transactional
     public ParticipantResponse participate(Long partyId, String name) {
-        try {
-            // spin lock을 통해 100ms마다 락을 얻을 수 있는지 확인
-            while (!redisLockRepository.lock(partyId)) {
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
+        int maxRetry = 3;
+        int retry = 0;
+        while (!redisLockRepository.lock(partyId)) {
+            if (++retry == maxRetry) {
+                throw new RuntimeException("락 획득을 실패했습니다");
             }
+            try {
+                // spin lock을 통해 100ms마다 락을 얻을 수 있는지 확인
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
+        try {
             Party party = partyRepository.findById(partyId).orElseThrow();
             if (party.isFull()) {
                 throw new IllegalArgumentException("정원이 가득 차있습니다.");
