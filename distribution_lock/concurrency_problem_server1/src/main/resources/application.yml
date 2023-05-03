@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: mysql
+    url: jdbc:mysql://localhost:3306/concurrency?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+  jpa:
+    hibernate.ddl-auto: create
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
